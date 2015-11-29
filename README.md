@@ -11,6 +11,8 @@ The result is presented in a GUI that is inspired by Piet Mondrian. There are no
 visual indication of what the coloured boxes mean; the intention there is that 
 when all is well, all fields are white, and since there are so few, you can easily
 learn which field represents what. 
+The plan is to run it on a Raspberry Pi, to be tacked onto a display. Like a piece
+of living art. 
 
 In its current implementation, there is a big field in the middle, which is build 
 status. It sits in the middle and is big, since it is very important. 
@@ -46,6 +48,13 @@ you will at least need:
 - jenkinsapi
 
 I will update this list when I know for sure.
+
+### Credits
+I started this work by tweaking a Jenkins monitor using LEDs, to be run from a Raspberry Pi.
+https://www.perforce.com/blog/150910/continuous-delivery-fun-jenkins-raspberry-pi
+The file jenkins_status.py originates in that project. 
+Thank you, Liz Lam!
+
 
 Håkan Eriksson, 
 November 29, 2015
