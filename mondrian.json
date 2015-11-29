@@ -1,0 +1,23 @@
+{
+    "jenkins":{
+        "base_url":"https://builds.apache.org",
+        "build_job_names":[
+            "Lucene-Artifacts-5.4",
+            "Lucene-Solr-Maven-5.4"],
+        "ci_test_job_names":["Lucene-Solr-Tests-5.4-Java7"],
+        "other_test_job_names":["Lucene-Solr-NightlyTests-5.4"]
+    },
+    "gerrit":{
+        "base_url":"https://git.eclipse.org/r",
+        "limits_ready_for_review":{
+            "good":0,
+            "almost_good":10,
+            "almost_bad":20
+        },
+        "limits_reviewed":{
+            "good":0,
+            "almost_good":10,
+            "almost_bad":20
+        }
+    }
+}
