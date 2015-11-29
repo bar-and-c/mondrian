@@ -1,0 +1,4 @@
+*.pyc
+
+# Excluding this so that local config doesn't get pushed
+mondrian.json
