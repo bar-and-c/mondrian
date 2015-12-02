@@ -17,8 +17,6 @@ SECONDS_BETWEEN_POLLS = 120
 # Power save. Ideally, it should be on during office hours.
 # Would also like to put screen to sleep outside office hours, and always on otherwise.
 # Is it possible to ping the screen saver?
-#
-# Make it run on Pi.
 
 class MonitorThread(threading.Thread):
     """Thread class for monitoring the various servers
@@ -38,18 +36,18 @@ class MonitorThread(threading.Thread):
     def run(self):
         self.running = True
         while self.running:
-            worst_jenkins_build = self.jenkins.get_worst_build_status()
-            self.post_build_status(worst_jenkins_build)
+            (success, unstable, fail, _, _) = self.jenkins.get_build_status()
+            self.post_jenkins_status(monitor_view.UPDATE_BUILD_PUBSUB, success, unstable, fail)
             if not self.running:
                 break
 
-            worst_jenkins_test = self.jenkins.get_worst_ci_test_status()
-            self.post_ci_test_status(worst_jenkins_test)
+            (success, unstable, fail, _, _) = self.jenkins.get_ci_test_status()
+            self.post_jenkins_status(monitor_view.UPDATE_CI_TEST_PUBSUB, success, unstable, fail)
             if not self.running:
                 break
 
-            worst_jenkins_test = self.jenkins.get_worst_other_tests_status()
-            self.post_other_tests_status(worst_jenkins_test)
+            (success, unstable, fail, _, _) = self.jenkins.get_other_tests_status()
+            self.post_jenkins_status(monitor_view.UPDATE_OTHER_TESTS_PUBSUB, success, unstable, fail)
             if not self.running:
                 break
 
@@ -68,17 +66,16 @@ class MonitorThread(threading.Thread):
 
         logging.debug('done monitoring')
 
-    def post_build_status(self, status):
-        view_status = monitor_view.STATUS_GOOD if status else monitor_view.STATUS_BAD
-        Publisher.sendMessage(monitor_view.UPDATE_BUILD_PUBSUB, status=view_status)
-
-    def post_ci_test_status(self, status):
-        view_status = monitor_view.STATUS_GOOD if status else monitor_view.STATUS_BAD
-        Publisher.sendMessage(monitor_view.UPDATE_CI_TEST_PUBSUB, status=view_status)
-
-    def post_other_tests_status(self, status):
-        view_status = monitor_view.STATUS_GOOD if status else monitor_view.STATUS_BAD
-        Publisher.sendMessage(monitor_view.UPDATE_OTHER_TESTS_PUBSUB, status=view_status)
+    def post_jenkins_status(self, job_pubsub, successes, unstable, failures):
+        if len(failures) != 0:
+            view_status = monitor_view.STATUS_BAD
+        elif len(unstable) != 0:
+            view_status = monitor_view.STATUS_ALMOST_BAD
+        elif len(successes) > 0:
+            view_status = monitor_view.STATUS_GOOD
+        else:
+            view_status = monitor_view.STATUS_ALMOST_GOOD
+        Publisher.sendMessage(job_pubsub, status=view_status)
 
     def post_ready_for_review_status(self, status):
         if status == self.gerrit_for_review_limits['good']:
@@ -142,5 +139,5 @@ if __name__ == "__main__":
                        help='Start as "heads up display", a small window always on top.' +
                             'Close with Esc key.')
     args = parser.parse_args()
-    print args
+
     run_app(full_screen=args.fullscreen, top_window=args.top)
