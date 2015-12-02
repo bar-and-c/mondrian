@@ -12,7 +12,9 @@ visual indication of what the coloured boxes mean; the intention there is that
 when all is well, all fields are white, and since there are so few, you can easily
 learn which field represents what. 
 The plan is to run it on a Raspberry Pi, to be tacked onto a display. Like a piece
-of living art. 
+of living and informative art. 
+(Unfortunately wxPython 3 turned out to be a pain to install on the Pi, so I might
+change to Tkinter.)
 
 In its current implementation, there is a big field in the middle, which is build 
 status. It sits in the middle and is big, since it is very important. 
@@ -44,7 +46,7 @@ the build and test jobs to monitor.
 There are a few python modules you will need to install. I may have forgotten some, but 
 you will at least need:
 
-- wxPython
+- wxPython Phoenix (3.x)
 - jenkinsapi
 
 I will update this list when I know for sure.
