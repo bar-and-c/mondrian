@@ -112,7 +112,7 @@ def read_config():
     return data
 
 
-def run_app(full_screen=True):
+def run_app(full_screen=True, top_window=False):
     config_data = read_config()
 
     jenkins_data = config_data['jenkins']
@@ -128,7 +128,7 @@ def run_app(full_screen=True):
                             gerrit_data['limits_ready_for_review'],
                             gerrit_data['limits_reviewed'])
 
-    monitor_view.run(full_screen)
+    monitor_view.run(full_screen, top_window)
     monitor.stop()
     monitor.join()
 
@@ -138,6 +138,9 @@ if __name__ == "__main__":
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-f', '--fullscreen', action='store_true', default=False,
                        help='Start the monitor in full screen mode. Close with Esc key.')
+    group.add_argument('-t', '--top', action='store_true', default=False,
+                       help='Start as "heads up display", a small window always on top.' +
+                            'Close with Esc key.')
     args = parser.parse_args()
-
-    run_app(args.fullscreen)
+    print args
+    run_app(full_screen=args.fullscreen, top_window=args.top)

@@ -2,6 +2,8 @@ import logging
 import wx
 from wx.lib.pubsub import pub as Publisher
 
+MONITOR_RELATIVE_SIZE = 0.2
+MONITOR_EDGE_MARGIN = 20
 
 STATUS_GOOD = 0
 STATUS_ALMOST_GOOD = 1
@@ -144,8 +146,18 @@ class MainPanel(wx.Panel):
 class MyForm(wx.Frame):
     """The main form. Possible to run full screen. Posts updates of new 'Mondrian line
        width' when resizing."""
-    def __init__(self, full_screen=True):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Mondrian")
+    def __init__(self, full_screen=True, top_window=False):
+
+        if top_window:
+            win_style = wx.CLIP_CHILDREN | wx.STAY_ON_TOP | wx.FRAME_NO_TASKBAR | \
+                      wx.NO_BORDER | wx.FRAME_SHAPED
+        else:
+            win_style = wx.DEFAULT_FRAME_STYLE
+
+        (win_pos, win_size) = self.top_right()
+
+        wx.Frame.__init__(self, parent=None, id=wx.ID_ANY, title="Mondrian",
+                          style=win_style, pos=win_pos, size=win_size)
 
         # EVT_KEY_DOWN doesn't seem to work on OS X
         self.Bind(wx.EVT_CHAR_HOOK, self.on_key)
@@ -157,6 +169,14 @@ class MyForm(wx.Frame):
 
         if full_screen:
             self.ShowFullScreen(True)
+
+    def top_right(self):
+        (display_width, display_height) = wx.DisplaySize()
+        width = display_width * MONITOR_RELATIVE_SIZE
+        height = display_height * MONITOR_RELATIVE_SIZE
+        x = display_width - width - MONITOR_EDGE_MARGIN
+        y = MONITOR_EDGE_MARGIN  # Just some "normal" position near the top
+        return (wx.Point(x, y), wx.Size(width, height))
 
     def on_key(self, event):
         key_code = event.GetKeyCode()
@@ -174,11 +194,12 @@ class MyForm(wx.Frame):
         Publisher.sendMessage(RESIZE_PUBSUB, line_width=new_line_width)
 
 
-def run(full_screen=True):
+def run(full_screen=True, top_window=False):
     app = wx.App()
-    MyForm(full_screen)
+    MyForm(full_screen, top_window)
     app.MainLoop()
 
 
 if __name__ == "__main__":
-    run(full_screen=False)
+    # Just for test...
+    run(full_screen=False, top_window=True)
