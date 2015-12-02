@@ -150,7 +150,7 @@ class MyForm(wx.Frame):
 
         if top_window:
             win_style = wx.CLIP_CHILDREN | wx.STAY_ON_TOP | wx.FRAME_NO_TASKBAR | \
-                      wx.NO_BORDER | wx.FRAME_SHAPED
+                      wx.NO_BORDER | wx.FRAME_SHAPED | wx.DEFAULT_FRAME_STYLE
         else:
             win_style = wx.DEFAULT_FRAME_STYLE
 
