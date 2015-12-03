@@ -4,6 +4,7 @@ import threading
 import argparse
 from wx.lib.pubsub import pub as Publisher
 import json
+import datetime
 
 import jenkins_status
 import gerrit
@@ -11,7 +12,11 @@ import monitor_view
 
 
 SECONDS_BETWEEN_POLLS = 120
+THE_BIG_SLEEP = 60 * 60 * 15
+MICRONAP = 0.2
 
+EARLIEST_HOUR = 6
+LATEST_HOUR = 17
 
 # TODO:
 # Power save. Ideally, it should be on during office hours.
@@ -36,6 +41,9 @@ class MonitorThread(threading.Thread):
     def run(self):
         self.running = True
         while self.running:
+            if not self.working_hours():
+                time.sleep(THE_BIG_SLEEP)
+                continue
             (success, unstable, fail, _, _) = self.jenkins.get_build_status()
             self.post_jenkins_status(monitor_view.UPDATE_BUILD_PUBSUB, success, unstable, fail)
             if not self.running:
@@ -61,10 +69,14 @@ class MonitorThread(threading.Thread):
             t0 = time.time()
             t = t0
             while self.running and ((t - t0) < SECONDS_BETWEEN_POLLS):
-                time.sleep(0.2)
+                time.sleep(MICRONAP)
                 t = time.time()
 
         logging.debug('done monitoring')
+
+    def working_hours(self):
+        this_hour = datetime.datetime.now().hour
+        return (this_hour >= EARLIEST_HOUR) and (this_hour <= LATEST_HOUR)
 
     def post_jenkins_status(self, job_pubsub, successes, unstable, failures):
         if len(failures) != 0:
