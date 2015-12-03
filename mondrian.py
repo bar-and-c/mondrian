@@ -9,19 +9,18 @@ import datetime
 import jenkins_status
 import gerrit
 import monitor_view
+import pymouse
 
 
 SECONDS_BETWEEN_POLLS = 120
 THE_BIG_SLEEP = 60 * 60 * 15
 MICRONAP = 0.2
 
+MOUSE_DIFF = 1
+
 EARLIEST_HOUR = 6
 LATEST_HOUR = 17
 
-# TODO:
-# Power save. Ideally, it should be on during office hours.
-# Would also like to put screen to sleep outside office hours, and always on otherwise.
-# Is it possible to ping the screen saver?
 
 class MonitorThread(threading.Thread):
     """Thread class for monitoring the various servers
@@ -40,10 +39,17 @@ class MonitorThread(threading.Thread):
     # Would be nice to close.
     def run(self):
         self.running = True
+        mouse = pymouse.PyMouse()
         while self.running:
             if not self.working_hours():
                 time.sleep(THE_BIG_SLEEP)
                 continue
+
+            (initial_x, initial_y) = mouse.position()
+            new_x = initial_x + MOUSE_DIFF
+            new_y = initial_y + MOUSE_DIFF
+            mouse.move(new_x, new_y)
+
             (success, unstable, fail, _, _) = self.jenkins.get_build_status()
             self.post_jenkins_status(monitor_view.UPDATE_BUILD_PUBSUB, success, unstable, fail)
             if not self.running:
@@ -65,6 +71,12 @@ class MonitorThread(threading.Thread):
             self.post_ready_for_review_status(rfr_status)
             reviewed_status = len(gerrit_reviewed)
             self.post_reviewed_status(reviewed_status)
+
+            # Move mouse back a little
+            (initial_x, initial_y) = mouse.position()
+            new_x = initial_x - MOUSE_DIFF
+            new_y = initial_y - MOUSE_DIFF
+            mouse.move(new_x, new_y)
 
             t0 = time.time()
             t = t0
