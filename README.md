@@ -16,6 +16,27 @@ of living and informative art.
 (Unfortunately wxPython 3 turned out to be a pain to install on the Pi, so I might
 change to Tkinter.)
 
+### Usage
+
+You must create a config file, containing e.g. the URLs to Jenkins and Gerrit, and 
+also the build and test jobs to monitor. The name of the file must be mondrian.json,
+and it must be located where the rest of the application is. 
+The repo contains an example file, mondrian_example_config.json, with examples from 
+publically available servers. 
+
+The application is started by calling mondrian.py, with optional arguments:
+
+* -t, as in "top window", i.e. a small window that stays on top of others.
+* -f, for full screen presentation (where it also tries to keep the screen saver at bay).
+* -p, for "power save", meaning that outside work hours, it does not pull any data from
+servers, and (in full screen mode) does not try to keep the screen saver away.
+* No arguments spawns a small normal window, like -t but not on top.
+
+The flags '-f' and '-t' are mutually exclusive.
+Escape key to exit in all cases.
+
+### Status presentation
+
 In its current implementation, there is a big field in the middle, which is build 
 status. It sits in the middle and is big, since it is very important. 
 Obviously tests are important as well, but this is *my* layout, OK? You can alter
@@ -27,19 +48,29 @@ Finally, there are two small fields at the bottom of the window, below the build
 field. The left contains status of "ready for review" on Gerrit, and the right holds
 the status of "reviewed", i.e. ready for merge or more work. 
 
-The status is reported as follows: white is "good", blue is "almost good", yellow is 
-"almost bad" and red is (surprise!) "bad".
-The concept of good/bad is different for the three groups. The build is either good
-or bad. One could imagine warnings producing an "almost good/bad" status, but we have
-warnings treated as errors. 
-The tests are currently only good/bad as well, i.e. if only one of the test jobs in 
-a field is not a success, the entire field is red. 
-The Gerrit fields are good if there are no issues at all, e.g. nothing at all ready 
-for review. Then there are limits, defined in the config file, which defines how many
-changes in each category means "almost good", et cetera. 
+The status is reported by colouring the fields on the screen as follows: 
 
-The config file, mondrian.json, also contains the URLs to Jenkins and Gerrit, and also
-the build and test jobs to monitor. 
+* white is "good", 
+* blue is "almost good", 
+* yellow is "almost bad", and
+* red is (surprise!) "bad".
+
+The concept of good/bad is different for the three groups. 
+The Jenkins status (build and test jobs) can be:
+
+* "bad", if there are any failed job in that group,
+* "almost bad", if there are any unstable jobs on that group,
+* "good", if there are any successful jobs (but no failed or unstable), or
+* "almost good", if there are only aborted and/or not run jobs in that group.
+
+The Gerrit status fields can be:
+
+* "good" if there are no issues at all (e.g. nothing at all ready for review),
+* "almost good", if the number of issues is less than a configured limit,
+* "almost bad", if the number of issues is less than another configured limit,
+* "bad", if the number of issues in that group is over the "almost bad" limit.
+
+These limits are defined in mondrian.json.
 
 
 ### Requirements
