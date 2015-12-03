@@ -23,6 +23,7 @@ status_colour = {STATUS_GOOD : COLOUR_STATUS_GOOD,
 
 LINE_WIDTH_PART = 0.01
 
+SHUTDOWN_PUBSUB = "shutdown"
 RESIZE_PUBSUB = "resize"
 UPDATE_BUILD_PUBSUB = "update_build"
 UPDATE_CI_TEST_PUBSUB = "update_ci_test"
@@ -164,6 +165,8 @@ class MyForm(wx.Frame):
 
         self.Bind(wx.EVT_SIZE, self.on_size)
 
+        Publisher.subscribe(self.shutdown, SHUTDOWN_PUBSUB)
+
         MainPanel(self)
         self.Show()
 
@@ -177,6 +180,9 @@ class MyForm(wx.Frame):
         x = display_width - width - MONITOR_EDGE_MARGIN
         y = MONITOR_EDGE_MARGIN  # Just some "normal" position near the top
         return (wx.Point(x, y), wx.Size(width, height))
+
+    def shutdown(self):
+        self.Close()
 
     def on_key(self, event):
         key_code = event.GetKeyCode()

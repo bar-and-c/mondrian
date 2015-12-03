@@ -26,63 +26,72 @@ class MonitorThread(threading.Thread):
     """Thread class for monitoring the various servers
        (initially Gerrit and Jenkins)."""
 
-    def __init__(self, jenkins_instance, gerrit_instance, gerrit_for_review_limits, gerrit_reviewed_limits):
+    def __init__(self, jenkins_instance, gerrit_instance,
+                 gerrit_for_review_limits, gerrit_reviewed_limits,
+                 powersave=False, keep_alive=False):
         threading.Thread.__init__(self)
         self.running = False
         self.jenkins = jenkins_instance
         self.gerrit = gerrit_instance
         self.gerrit_for_review_limits = gerrit_for_review_limits
         self.gerrit_reviewed_limits = gerrit_reviewed_limits
+        self.powersave = powersave
+        self.keep_alive = keep_alive
         self.start()
 
-    # TODO: An exception here will (?) crash the monitor thread but leave the view hanging.
-    # Would be nice to close.
     def run(self):
         self.running = True
-        mouse = pymouse.PyMouse()
-        while self.running:
-            if not self.working_hours():
-                time.sleep(THE_BIG_SLEEP)
-                continue
+        try:
+            mouse = pymouse.PyMouse()
+            while self.running:
+                if self.powersave and not self.working_hours():
+                    time.sleep(THE_BIG_SLEEP)
+                    continue
 
-            (initial_x, initial_y) = mouse.position()
-            new_x = initial_x + MOUSE_DIFF
-            new_y = initial_y + MOUSE_DIFF
-            mouse.move(new_x, new_y)
+                if self.keep_alive:
+                    (initial_x, initial_y) = mouse.position()
+                    new_x = initial_x + MOUSE_DIFF
+                    new_y = initial_y + MOUSE_DIFF
+                    mouse.move(new_x, new_y)
 
-            (success, unstable, fail, _, _) = self.jenkins.get_build_status()
-            self.post_jenkins_status(monitor_view.UPDATE_BUILD_PUBSUB, success, unstable, fail)
-            if not self.running:
-                break
+                (success, unstable, fail, _, _) = self.jenkins.get_build_status()
+                self.post_jenkins_status(monitor_view.UPDATE_BUILD_PUBSUB, success, unstable, fail)
+                if not self.running:
+                    break
 
-            (success, unstable, fail, _, _) = self.jenkins.get_ci_test_status()
-            self.post_jenkins_status(monitor_view.UPDATE_CI_TEST_PUBSUB, success, unstable, fail)
-            if not self.running:
-                break
+                (success, unstable, fail, _, _) = self.jenkins.get_ci_test_status()
+                self.post_jenkins_status(monitor_view.UPDATE_CI_TEST_PUBSUB, success, unstable, fail)
+                if not self.running:
+                    break
 
-            (success, unstable, fail, _, _) = self.jenkins.get_other_tests_status()
-            self.post_jenkins_status(monitor_view.UPDATE_OTHER_TESTS_PUBSUB, success, unstable, fail)
-            if not self.running:
-                break
+                (success, unstable, fail, _, _) = self.jenkins.get_other_tests_status()
+                self.post_jenkins_status(monitor_view.UPDATE_OTHER_TESTS_PUBSUB, success, unstable, fail)
+                if not self.running:
+                    break
 
-            (gerrit_for_review, gerrit_reviewed) = self.gerrit.all_open_changes()
+                (gerrit_for_review, gerrit_reviewed) = self.gerrit.all_open_changes()
 
-            rfr_status = len(gerrit_for_review)
-            self.post_ready_for_review_status(rfr_status)
-            reviewed_status = len(gerrit_reviewed)
-            self.post_reviewed_status(reviewed_status)
+                rfr_status = len(gerrit_for_review)
+                self.post_ready_for_review_status(rfr_status)
+                reviewed_status = len(gerrit_reviewed)
+                self.post_reviewed_status(reviewed_status)
 
-            # Move mouse back a little
-            (initial_x, initial_y) = mouse.position()
-            new_x = initial_x - MOUSE_DIFF
-            new_y = initial_y - MOUSE_DIFF
-            mouse.move(new_x, new_y)
+                # Move mouse back a little
+                if self.keep_alive:
+                    (initial_x, initial_y) = mouse.position()
+                    new_x = initial_x - MOUSE_DIFF
+                    new_y = initial_y - MOUSE_DIFF
+                    mouse.move(new_x, new_y)
 
-            t0 = time.time()
-            t = t0
-            while self.running and ((t - t0) < SECONDS_BETWEEN_POLLS):
-                time.sleep(MICRONAP)
-                t = time.time()
+                t0 = time.time()
+                t = t0
+                while self.running and ((t - t0) < SECONDS_BETWEEN_POLLS):
+                    time.sleep(MICRONAP)
+                    t = time.time()
+        except Exception as e:
+            logging.error('monitor thread exception:\n%s', str(e))
+            time.sleep(1)  # Just to give the view time to subscribe
+            Publisher.sendMessage(monitor_view.SHUTDOWN_PUBSUB)
 
         logging.debug('done monitoring')
 
@@ -133,7 +142,7 @@ def read_config():
     return data
 
 
-def run_app(full_screen=True, top_window=False):
+def run_app(full_screen=True, top_window=False, powersave=False):
     config_data = read_config()
 
     jenkins_data = config_data['jenkins']
@@ -147,7 +156,9 @@ def run_app(full_screen=True, top_window=False):
     monitor = MonitorThread(jenkins,
                             gerrit_instance,
                             gerrit_data['limits_ready_for_review'],
-                            gerrit_data['limits_reviewed'])
+                            gerrit_data['limits_reviewed'],
+                            powersave=powersave,
+                            keep_alive=full_screen)
 
     monitor_view.run(full_screen, top_window)
     monitor.stop()
@@ -156,12 +167,15 @@ def run_app(full_screen=True, top_window=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Display a monitor of Jenkins and Gerrit status.')
+    parser.add_argument('-p', '--powersave', action='store_true', default=False,
+                        help='Stops monitoring outside "office hours".')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-f', '--fullscreen', action='store_true', default=False,
-                       help='Start the monitor in full screen mode. Close with Esc key.')
+                       help='Start the monitor in full screen mode, trying to keep the screen' +
+                       ' active. Close with Esc key.')
     group.add_argument('-t', '--top', action='store_true', default=False,
                        help='Start as "heads up display", a small window always on top.' +
                             'Close with Esc key.')
     args = parser.parse_args()
 
-    run_app(full_screen=args.fullscreen, top_window=args.top)
+    run_app(full_screen=args.fullscreen, top_window=args.top, powersave=args.powersave)
