@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import logging
 import time
 import threading
@@ -13,13 +14,14 @@ import pymouse
 
 
 SECONDS_BETWEEN_POLLS = 120
-THE_BIG_SLEEP = 60 * 60 * 15
-MICRONAP = 0.2
+MICRONAP = 2
 
 MOUSE_DIFF = 1
 
 EARLIEST_HOUR = 6
 LATEST_HOUR = 17
+ISO_MONDAY = 1
+ISO_FRIDAY = 5
 
 
 class MonitorThread(threading.Thread):
@@ -30,7 +32,7 @@ class MonitorThread(threading.Thread):
                  gerrit_for_review_limits, gerrit_reviewed_limits,
                  powersave=False, keep_alive=False):
         threading.Thread.__init__(self)
-        self.running = False
+        self.running_monitor_thread = False
         self.jenkins = jenkins_instance
         self.gerrit = gerrit_instance
         self.gerrit_for_review_limits = gerrit_for_review_limits
@@ -40,12 +42,12 @@ class MonitorThread(threading.Thread):
         self.start()
 
     def run(self):
-        self.running = True
+        self.running_monitor_thread = True
         try:
             mouse = pymouse.PyMouse()
-            while self.running:
+            while self.running_monitor_thread:
                 if self.powersave and not self.working_hours():
-                    time.sleep(THE_BIG_SLEEP)
+                    self.sleep_with_one_eye_open(SECONDS_BETWEEN_POLLS)
                     continue
 
                 if self.keep_alive:
@@ -56,17 +58,17 @@ class MonitorThread(threading.Thread):
 
                 (success, unstable, fail, _, _) = self.jenkins.get_build_status()
                 self.post_jenkins_status(monitor_view.UPDATE_BUILD_PUBSUB, success, unstable, fail)
-                if not self.running:
+                if not self.running_monitor_thread:
                     break
 
                 (success, unstable, fail, _, _) = self.jenkins.get_ci_test_status()
                 self.post_jenkins_status(monitor_view.UPDATE_CI_TEST_PUBSUB, success, unstable, fail)
-                if not self.running:
+                if not self.running_monitor_thread:
                     break
 
                 (success, unstable, fail, _, _) = self.jenkins.get_other_tests_status()
                 self.post_jenkins_status(monitor_view.UPDATE_OTHER_TESTS_PUBSUB, success, unstable, fail)
-                if not self.running:
+                if not self.running_monitor_thread:
                     break
 
                 (gerrit_for_review, gerrit_reviewed) = self.gerrit.all_open_changes()
@@ -83,11 +85,8 @@ class MonitorThread(threading.Thread):
                     new_y = initial_y - MOUSE_DIFF
                     mouse.move(new_x, new_y)
 
-                t0 = time.time()
-                t = t0
-                while self.running and ((t - t0) < SECONDS_BETWEEN_POLLS):
-                    time.sleep(MICRONAP)
-                    t = time.time()
+                self.sleep_with_one_eye_open(SECONDS_BETWEEN_POLLS)
+
         except Exception as e:
             logging.error('monitor thread exception:\n%s', str(e))
             time.sleep(1)  # Just to give the view time to subscribe
@@ -95,9 +94,18 @@ class MonitorThread(threading.Thread):
 
         logging.debug('done monitoring')
 
+    def sleep_with_one_eye_open(self, seconds_to_sleep):
+        t0 = time.time()
+        t = t0
+        while self.running_monitor_thread and ((t - t0) < seconds_to_sleep):
+            time.sleep(MICRONAP)
+            t = time.time()
+
     def working_hours(self):
-        this_hour = datetime.datetime.now().hour
-        return (this_hour >= EARLIEST_HOUR) and (this_hour <= LATEST_HOUR)
+        today = datetime.datetime.now()
+        workinghour = (today.hour >= EARLIEST_HOUR) and (today.hour <= LATEST_HOUR)
+        workingday = (today.isoweekday() >= ISO_MONDAY) and (today.isoweekday() <= ISO_FRIDAY)
+        return workingday and workinghour
 
     def post_jenkins_status(self, job_pubsub, successes, unstable, failures):
         if len(failures) != 0:
@@ -133,7 +141,7 @@ class MonitorThread(threading.Thread):
         Publisher.sendMessage(monitor_view.UPDATE_GERRIT_REVIEWED_PUBSUB, status=view_status)
 
     def stop(self):
-        self.running = False
+        self.running_monitor_thread = False
 
 
 def read_config():
