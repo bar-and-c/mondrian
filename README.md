@@ -48,7 +48,7 @@ Finally, there are two small fields at the bottom of the window, below the build
 field. The left contains status of "ready for review" on Gerrit, and the right holds
 the status of "reviewed", i.e. ready for merge or more work. 
 
-![mondrian.py screenshot](doc/mondrian.jpg "In this example, the build and CI test job is OK, but 'other tests' fail, and (bottom row) there are a lot of changes on Gerrit that need your attention.")
+![mondrian.py screenshot](doc/mondrian.jpg "In this example, the build and CI test jobs are OK, but 'other tests' fail (on the right), and (bottom row) there are a lot of changes on Gerrit that need your attention.")
 
 
 The status is reported by colouring the fields on the screen as follows: 
