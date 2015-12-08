@@ -83,10 +83,11 @@ you will at least need:
 - wxPython Phoenix (3.x)
 - jenkinsapi
 - PyUserInput
+- On Raspberry Pi also python-xlib (for PyUserInput)
 
 
 ### Known issues
-Resizing the windows doesn't work on Windows. I haven't tried to fix it, since I don't run it on Windows, and normally only in full screen anyway.
+Resizing the windows doesn't work on Windows (it's not refreshed properly). I haven't tried to fix it, since I don't run it on Windows, and normally only in full screen anyway.
 
 ### Credits
 I started this work by tweaking a Jenkins monitor using LEDs, to be run from a Raspberry Pi.
